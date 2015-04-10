@@ -8,11 +8,9 @@
     "description": "Generate semi-sane data for a Vanilla forum",
     "license": "MIT",
     "require": {
-        "vanilla/garden-cli": "~1.0"
+        "vanilla/garden-cli": "~1.0",
+        "bobthecow/faker": "1.0.*@dev"
     },
-    "require-dev": {
-		"bobthecow/faker": "dev-master"
-	},
     "bin": [
       "bin/vanilla-colonize"
     ]
