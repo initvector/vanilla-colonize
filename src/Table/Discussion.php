@@ -5,7 +5,7 @@ class Discussion extends BaseTable {
 
     /**
      * A reference to our object instance.
-     * @var Initvector\Colonize\Table\Discussion
+     * @var Discussion
      */
     protected static $instance;
 

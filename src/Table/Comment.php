@@ -5,7 +5,7 @@ class Comment extends BaseTable {
 
     /**
      * A reference to our object instance.
-     * @var Initvector\Colonize\Table\Comment
+     * @var Comment
      */
     protected static $instance;
 

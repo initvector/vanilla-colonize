@@ -5,7 +5,7 @@ class Category extends BaseTable {
 
     /**
      * A reference to our object instance.
-     * @var Initvector\Colonize\Table\Category
+     * @var Category
      */
     protected static $instance;
 

@@ -11,7 +11,7 @@ abstract class BaseTable {
 
     /**
      * A reference to our object instance.
-     * @var Initvector\Colonize\Table\BaseTable
+     * @var BaseTable
      */
     protected static $instance;
 
@@ -84,7 +84,7 @@ abstract class BaseTable {
     /**
      * Return instance of current object.  Used for singleton design.
      *
-     * @return object Instance of current object.
+     * @return BaseTable Instance of current object.
      */
     public static function getInstance() {
         // Grab the name of the child class the call is performed against.
