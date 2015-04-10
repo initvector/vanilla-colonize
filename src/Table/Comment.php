@@ -10,6 +10,11 @@ class Comment extends BaseTable {
     protected static $instance;
 
     /**
+     * Keep track of inserted rows by ID
+     */
+    protected $trackRows = false;
+
+    /**
      * Format of the prepared statement.
      * @var string
      */

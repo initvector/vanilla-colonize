@@ -34,6 +34,11 @@ abstract class BaseTable {
     protected $ids = array();
 
     /**
+     * Keep track of inserted rows by ID
+     */
+    protected $trackRows = true;
+
+    /**
      * Class constructor.
      */
     public function __construct() {
@@ -102,10 +107,16 @@ abstract class BaseTable {
     /**
      * Grab a random ID from the object's array of row IDs
      *
-     * @return integer An ID representing an inserted row
+     * @return bool|integer An ID representing an inserted row or false if none
      */
     public function getRandomId() {
-        return $this->ids[array_rand($this->ids)];
+        if (empty($this->ids)) {
+            return false;
+        }
+
+        $totalRows = count($this->ids);
+        $randomIndex = rand(0, $totalRows - 1);
+        return $this->ids[$randomIndex];
     }
 
     /**
@@ -168,8 +179,10 @@ abstract class BaseTable {
             return false;
         }
 
-        // Push the latest row ID onto the current type's ID array.
-        $this->ids[] = $db->insert_id;
+        // Push the latest row ID onto the current type's ID array, if tracking.
+        if ($this->trackRows) {
+            $this->ids[] = $db->insert_id;
+        }
 
         return true;
     }
