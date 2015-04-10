@@ -12,5 +12,8 @@
     },
     "require-dev": {
 		"bobthecow/faker": "dev-master"
-	}
+	},
+    "bin": [
+      "bin/vanilla-colonize"
+    ]
 }
