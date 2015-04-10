@@ -114,11 +114,11 @@ abstract class BaseTable {
     /**
      * Grab a random ID from the object's array of row IDs
      *
-     * @return bool|integer An ID representing an inserted row or false if none
+     * @return integer An ID representing an inserted row
      */
     public function getRandomId() {
         if (empty($this->ids)) {
-            return false;
+            throw new ErrorException("No IDs found (" . get_called_class() . ")");
         }
 
         $totalRows = count($this->ids);
