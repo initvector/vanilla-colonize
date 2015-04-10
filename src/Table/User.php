@@ -5,7 +5,7 @@ class User extends BaseTable {
 
     /**
      * A reference to our object instance.
-     * @var Initvector\Colonize\Table\User
+     * @var User
      */
     protected static $instance;
 
