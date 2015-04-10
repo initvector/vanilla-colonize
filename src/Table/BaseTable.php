@@ -118,7 +118,7 @@ abstract class BaseTable {
      */
     public function getRandomId() {
         if (empty($this->ids)) {
-            throw new ErrorException("No IDs found (" . get_called_class() . ")");
+            throw new \ErrorException("No IDs found (" . get_called_class() . ")");
         }
 
         $totalRows = count($this->ids);
