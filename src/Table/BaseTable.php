@@ -76,14 +76,21 @@ abstract class BaseTable {
      * @param integer $rows The number of items to insert.
      */
     public function generate($rows = 1) {
+        // Grab the start time for timing purposes
+        $start = microtime(true);
+
         $this->beforeGenerate();
 
-        for ($generated = 0; $generated < $rows; $generated++) {
+        for ($generated = 1; $generated <= $rows; $generated++) {
             $this->addRow();
-            echo ".";
+            echo "\r\033[KProcessed $generated/$rows";
         }
 
         $this->afterGenerate();
+
+        // Calculate and output the total time for this table
+        $duration = number_format(microtime(true) - $start, 2);
+        echo "\nCompleted content generation in " . $duration . "s\n";
     }
 
     /**

@@ -1,6 +1,6 @@
 <?php
 // Grab the startup time.  We'll need it for tracking total time.
-$startTime = microtime(true);
+define('APP_START', microtime(true));
 
 // Make sure we see everything that might be going awry.
 ini_set('display_errors',1);
@@ -12,9 +12,9 @@ require 'vendor/autoload.php';
 // Values are hardcoded....for now.
 // @todo Make these configurable with commandline options.
 $categories = 10;
-$comments = 1000000;
-$discussions = 100000;
-$users = 5000;
+$comments = 10000;
+$discussions = 1000;
+$users = 100;
 
 // Initialize CLI interface and configure the options available.
 $cli = new Garden\Cli\Cli();
@@ -47,4 +47,4 @@ Initvector\Colonize\Table\Comment::getInstance()->generate($comments);
 //@todo Could really use some dba/counts goodness here.
 
 // And we're done.  How'd we do?
-echo "\nFinished in " . number_format(microtime(true) - $startTime, 2) . "s\n";
+echo "\nAll operations completed in " . number_format(microtime(true) - APP_START, 2) . "s\n";
