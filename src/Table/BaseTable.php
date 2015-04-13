@@ -22,6 +22,12 @@ abstract class BaseTable {
     protected $insertStatement;
 
     /**
+     * Holds reference to mysqli_stmt representing prepared $insertStatement
+     * @var
+     */
+    protected $preparedInsertStatement;
+
+    /**
      * Type mapping of placeholders in the prepared statement.
      * @var string
      */
@@ -79,12 +85,25 @@ abstract class BaseTable {
         // Grab the start time for timing purposes
         $start = microtime(true);
 
+        // MySQL connection alias
         $this->beforeGenerate();
+
+        /**
+         * These session variables are recommended for bulk data loading.
+         * https://dev.mysql.com/doc/refman/5.5/en/optimizing-innodb-bulk-data-loading.html
+         */
+        $db = $this->db;
+        $db->query("set @@session.autocommit=0");
+        $db->query("set @@session.unique_checks=0");
+        $db->query("set @@session.foreign_key_checks=0");
 
         for ($generated = 1; $generated <= $rows; $generated++) {
             $this->addRow();
             echo "\r\033[KProcessed $generated/$rows";
         }
+
+        // Commits all of our generated row inserts
+        $db->query("commit");
 
         $this->afterGenerate();
 
@@ -109,6 +128,36 @@ abstract class BaseTable {
         }
 
         return static::$instance;
+    }
+
+    /**
+     * Grab a prepared statement object representing our statement template
+     *
+     * @return bool|mysqli_stmt Statement object on success, false on failure
+     */
+    public function getPreparedInsertStatement() {
+        // Already have a statement object? Great! Return it.
+        if ($this->preparedInsertStatement instanceof mysqli_stmt) {
+            return $this->preparedInsertStatement;
+        }
+
+        // MySQL connection alias
+        $db = $this->db;
+
+        /**
+         * Each child class should have an insertStatement set that defines
+         * the prepared statement format for their inserts.  Use that to
+         * create our prepared statement here.
+         */
+        $preparedStatement = $db->prepare($this->insertStatement);
+
+        // Any errors so far?
+        if ($db->errno) {
+            throw new \ErrorException($db->error);
+            return false;
+        }
+
+        return $this->preparedInsertStatement = $preparedStatement;
     }
 
     /**
@@ -146,13 +195,7 @@ abstract class BaseTable {
          * the prepared statement format for their inserts.  Use that to
          * create our prepared statement here.
          */
-        $statement = $db->prepare($this->insertStatement);
-
-        // Any errors so far?
-        if ($db->errno) {
-            throw new \ErrorException($db->error);
-            return false;
-        }
+        $statement = $this->getPreparedInsertStatement();
 
         /**
          * Here's where it starts to get a little hacky.  bind_param isn't so
