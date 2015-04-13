@@ -9,13 +9,6 @@ error_reporting(E_ALL);
 // Load up Composer's autoloader.
 require 'vendor/autoload.php';
 
-// Values are hardcoded....for now.
-// @todo Make these configurable with commandline options.
-$categories = 10;
-$comments = 10000;
-$discussions = 1000;
-$users = 100;
-
 // Initialize CLI interface and configure the options available.
 $cli = new Garden\Cli\Cli();
 $cli->description('Populate an empty Vanilla forum with fake data')
@@ -23,7 +16,8 @@ $cli->description('Populate an empty Vanilla forum with fake data')
     ->opt('port:P', 'Port number to use.', false, 'integer')
     ->opt('user:u', 'User for login if not current user.', true)
     ->opt('password:p', 'Password to use when connecting to server.')
-    ->opt('database:d', 'The name of the database to dump.', true);
+    ->opt('database:d', 'The name of the database to dump.', true)
+    ->opt('manifest:m', 'File locaion of the manifest file.');
 
 // Parse the commandline options.
 $args = $cli->parse($argv, true);
@@ -37,12 +31,9 @@ $db = Initvector\Colonize\Database::connect(
     $args->getOpt('port', 3306)
 );
 
-// Generate dummy data for our supported tables.
-// @todo Make these configurable with commandline options.
-Initvector\Colonize\Table\User::getInstance()->generate($users);
-Initvector\Colonize\Table\Category::getInstance()->generate($categories);
-Initvector\Colonize\Table\Discussion::getInstance()->generate($discussions);
-Initvector\Colonize\Table\Comment::getInstance()->generate($comments);
+$manifest = $args->getOpt('manifest', 'manifest.json');
+
+Initvector\Colonize\Manifest::load($manifest, true);
 
 //@todo Could really use some dba/counts goodness here.
 
