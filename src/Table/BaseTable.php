@@ -122,7 +122,7 @@ abstract class BaseTable {
         }
 
         $totalRows = count($this->ids);
-        $randomIndex = rand(0, $totalRows - 1);
+        $randomIndex = mt_rand(0, $totalRows - 1);
         return $this->ids[$randomIndex];
     }
 
