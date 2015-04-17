@@ -22,22 +22,34 @@ abstract class BaseTable {
     protected $insertStatement;
 
     /**
-     * Holds reference to mysqli_stmt representing prepared $insertStatement
-     * @var
-     */
-    protected $preparedInsertStatement;
-
-    /**
-     * Type mapping of placeholders in the prepared statement.
+     * Name of the ID field in the associated table
      * @var string
      */
-    protected $insertPlaceholders;
+    protected $idField = '';
 
     /**
      * IDs of rows that have been inserted.
      * @var array
      */
     protected $ids = array();
+
+    /**
+     * Values for rows to be inserted in bulk.
+     * @var array
+     */
+    protected $rowsToInsert = array();
+
+    /**
+     * Number of rows per insert statement.
+     * @var integer
+     */
+    protected $rowsPerInsert = 100;
+
+    /**
+     * Name of the table associated with the object
+     * @var string
+     */
+    protected $tableName = '';
 
     /**
      * Keep track of inserted rows by ID
@@ -50,6 +62,16 @@ abstract class BaseTable {
     public function __construct() {
         // Grab and save a reference to the database connection.
         $this->db = Database::getInstance();
+
+        // Magically assign idField and tableName properties, if empty
+        $reflection = new \ReflectionClass($this);
+
+        if ($this->idField == '') {
+            $this->idField = $reflection->getShortName() . 'ID';
+        }
+        if ($this->tableName == '') {
+            $this->tableName = 'GDN_' . $reflection->getShortName();
+        }
     }
 
     /**
@@ -62,6 +84,24 @@ abstract class BaseTable {
      * to perform followup actions.
      */
     protected function afterGenerate() {
+        // Are we tracking row IDs?
+        if ($this->trackRows) {
+            /**
+             * Since we're using multi-row inserts, inserted IDs aren't so easy
+             * to grab as they're being inserted.  We'll just grab them after
+             * everything has been inserted.
+             */
+            $lookupQuery = "select {$this->idField} from {$this->tableName}";
+            $lookupResult = $this->db->query($lookupQuery);
+            echo "\nGathering IDs...\n";
+            if ($lookupResult instanceof \mysqli_result) {
+                while ($currentID = $lookupResult->fetch_array()) {
+                    $this->ids[] = $currentID[0];
+                }
+            } else {
+                throw new \ErrorException("Unable to retrieve IDs: " . $this->db->error);
+            }
+        }
     }
 
     /**
@@ -72,6 +112,58 @@ abstract class BaseTable {
         // Just making sure we actually have a database connection.
         if (!$this->db instanceof \mysqli) {
             throw new \ErrorException('No valid MySQL connection available');
+        }
+    }
+
+    /**
+     * Flush the queue and insert all currently accumulated records, if queue
+     * meets or exceeds specified batch size.
+     *
+     * @param bool $forceFlush Ignore the batch size and flush, regardless
+     */
+    protected function flushInserts($forceFlush = false) {
+        // Are we under the batch and not forcing a flush?
+        if (count($this->rowsToInsert) < $this->rowsPerInsert && !$forceFlush) {
+            return false;
+        }
+
+        // Is there anything to insert?
+        if (!empty($this->rowsToInsert)) {
+            /**
+             * Each row's fields should be prepared before insertion for the sake
+             * of sanitizing, replacing special value placeholders, etc.
+             */
+            array_walk_recursive($this->rowsToInsert, array($this, 'prepareField'));
+
+            // Build out the values for our multi-row insert
+            $rowValues = '';
+            foreach ($this->rowsToInsert as $currentRow) {
+                $rowValues .= "(" . implode(',', $currentRow) . "),";
+            }
+
+            // Clip off that dangling comma
+            $rowValues = rtrim($rowValues, ',');
+
+            // Replace placeholders in the statement
+            $insertRows = str_replace(
+                array(
+                    ':table:',
+                    ':values:',
+                ),
+                array(
+                    $this->tableName,
+                    $rowValues
+                ),
+                $this->insertStatement
+            );
+
+            // Attempt an insert and flush our queue
+            if (!$this->db->query($insertRows)) {
+                throw new \ErrorException("Failure to insert: " . $this->db->error);
+            }
+
+            $this->rowsToInsert = array();
+
         }
     }
 
@@ -99,17 +191,40 @@ abstract class BaseTable {
 
         for ($generated = 1; $generated <= $rows; $generated++) {
             $this->addRow();
+            /**
+             * Since we aren't forcing a batch, flushInserts will only trigger
+             * a multi-row insert if the current records meet or exceed the
+             * specified batch.
+             */
+            $this->flushInserts();
             echo "\r\033[KProcessed $generated/$rows";
         }
+
+        /**
+         * $generated gets incremented once more at the end of the last loop
+         * iteration.  Adjust, accounting for that.
+         */
+        $generated--;
+
+        // Force a flush, in case we had anything still hung up in the queue.
+        $this->flushInserts(true);
 
         // Commits all of our generated row inserts
         $db->query("commit");
 
         $this->afterGenerate();
 
-        // Calculate and output the total time for this table
-        $duration = number_format(microtime(true) - $start, 2);
-        echo "\nCompleted content generation in " . $duration . "s\n";
+        /**
+         * Calculate and output the total time and average records-per-second
+         * for this table.
+         */
+        $duration = microtime(true) - $start;
+        $durationFormatted = number_format($duration, 2);
+
+        $rps = $duration > 0 ? ($generated / $duration) : $generated;
+        $rpsFormatted = number_format($rps, 2);
+
+        echo "\nCompleted content generation in {$durationFormatted}s (avg. {$rpsFormatted}rps)\n";
     }
 
     /**
@@ -131,36 +246,6 @@ abstract class BaseTable {
     }
 
     /**
-     * Grab a prepared statement object representing our statement template
-     *
-     * @return bool|mysqli_stmt Statement object on success, false on failure
-     */
-    public function getPreparedInsertStatement() {
-        // Already have a statement object? Great! Return it.
-        if ($this->preparedInsertStatement instanceof mysqli_stmt) {
-            return $this->preparedInsertStatement;
-        }
-
-        // MySQL connection alias
-        $db = $this->db;
-
-        /**
-         * Each child class should have an insertStatement set that defines
-         * the prepared statement format for their inserts.  Use that to
-         * create our prepared statement here.
-         */
-        $preparedStatement = $db->prepare($this->insertStatement);
-
-        // Any errors so far?
-        if ($db->errno) {
-            throw new \ErrorException($db->error);
-            return false;
-        }
-
-        return $this->preparedInsertStatement = $preparedStatement;
-    }
-
-    /**
      * Grab a random ID from the object's array of row IDs
      *
      * @return integer An ID representing an inserted row
@@ -176,64 +261,20 @@ abstract class BaseTable {
     }
 
     /**
-     * Create and execute a prepared insert statement.
+     * Prepare field values for insertion
      *
-     * @param array @parameters Data to populate the prepared statement.
-     * @return bool True on success, false on failure.
+     * @param $value Field value for row
+     * @param string $key Field name
      */
-    protected function prepareAndInsert($parameters) {
-        // Simple alias for the sake of brevity.
-        $db = $this->db;
-
-        // Is our one and only parameter not even an array?
-        if (!is_array($parameters)) {
-            return false;
+    protected function prepareField(&$value, $key) {
+        switch ($value) {
+            // Grab a random date from within the past year
+            case ':randomPastDate:':
+                $value = '(select now() - interval floor(rand() * 365) day)';
+                break;
+            // Just escape the value
+            default:
+                $value = "'" . $this->db->real_escape_string($value) . "'";
         }
-
-        /**
-         * Each child class should have an insertStatement set that defines
-         * the prepared statement format for their inserts.  Use that to
-         * create our prepared statement here.
-         */
-        $statement = $this->getPreparedInsertStatement();
-
-        /**
-         * Here's where it starts to get a little hacky.  bind_param isn't so
-         * great with dynamic numbers of prepared statement variables.  We have
-         * to use call_user_func to make that happen.  Our first parameter to
-         * bind_param has to be a type mapping of the supplied variables, so
-         * that needs to be popped on, first.
-         */
-
-        array_unshift($parameters, $this->insertPlaceholders);
-
-        /**
-         * bind_param doesn't play well with values.  It requires references.
-         * That is where this...thing comes into play.  We just create a new
-         * array with references to the old array.
-         */
-        $parameters_ref = array();
-        foreach ($parameters as &$current_parameter) {
-            $parameters_ref[] = &$current_parameter;
-        }
-
-        /**
-         * After the two kludges, we can call bind_param with a dynamic number
-         * of variables.
-         */
-        call_user_func_array(array($statement, 'bind_param'), $parameters_ref);
-
-        // After all that, did we run into an error?
-        if (!$statement->execute()) {
-            throw new \ErrorException($statement->error);
-            return false;
-        }
-
-        // Push the latest row ID onto the current type's ID array, if tracking.
-        if ($this->trackRows) {
-            $this->ids[] = $db->insert_id;
-        }
-
-        return true;
     }
 }

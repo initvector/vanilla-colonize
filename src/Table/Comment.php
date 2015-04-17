@@ -18,18 +18,9 @@ class Comment extends BaseTable {
      * Format of the prepared statement.
      * @var string
      */
-    protected $insertStatement = "insert into GDN_Comment
+    protected $insertStatement = "insert into :table:
         (DiscussionID, InsertUserID, Body, DateInserted)
-        values (
-            ?,?,?,
-            (select now() - interval floor(rand() * 365) day)
-        )";
-
-    /**
-     * Type mapping of placeholders in the prepared statement.
-     * @var string
-     */
-    protected $insertPlaceholders = 'iis';
+        value :values:";
 
     /**
      * Defines the process for adding a new row.
@@ -38,10 +29,11 @@ class Comment extends BaseTable {
         $fields = array(
             'DiscussionID' => Discussion::getInstance()->getRandomId(),
             'InsertUserID' => User::getInstance()->getRandomId(),
-            'Body' => \Faker\Lorem::paragraph()
+            'Body' => \Faker\Lorem::paragraph(),
+            'DateInserted' => ':randomPastDate:'
         );
 
-        $this->prepareAndInsert($fields);
+        $this->rowsToInsert[] = $fields;
     }
 
     /**

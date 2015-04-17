@@ -13,15 +13,9 @@ class Category extends BaseTable {
      * Format of the prepared statement.
      * @var string
      */
-    protected $insertStatement = "insert into GDN_Category
+    protected $insertStatement = "insert into :table:
         (ParentCategoryID, Depth, Name, UrlCode, Description)
-        values (-1, 1, ?, ?, ?)";
-
-    /**
-     * Type mapping of placeholders in the prepared statement.
-     * @var string
-     */
-    protected $insertPlaceholders = 'sss';
+        values :values:";
 
     /**
      * Defines the process for adding a new row.
@@ -29,12 +23,14 @@ class Category extends BaseTable {
     protected function addRow() {
         $name = \Faker\Lorem::word();
         $fields = array(
+            'ParentCategoryID' => -1,
+            'Depth' => 1,
             'Name' => $name,
             'UrlCode' => \Faker\Internet::slug($name),
             'Description' => \Faker\Lorem::sentence(12)
-            );
+        );
 
-        $this->prepareAndInsert($fields);
+        $this->rowsToInsert[] = $fields;
     }
 
     /**

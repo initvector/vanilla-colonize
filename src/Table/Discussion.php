@@ -13,18 +13,9 @@ class Discussion extends BaseTable {
      * Format of the prepared statement.
      * @var string
      */
-    protected $insertStatement = "insert into GDN_Discussion
+    protected $insertStatement = "insert into :table:
         (CategoryID, InsertUserID, Name, Body, DateInserted)
-        values (
-            ?,?,?,?,
-            (select now() - interval floor(rand() * 365) day)
-        )";
-
-    /**
-     * Type mapping of placeholders in the prepared statement.
-     * @var string
-     */
-    protected $insertPlaceholders = 'iiss';
+        value :values:";
 
     /**
      * Defines the process for adding a new row.
@@ -35,10 +26,11 @@ class Discussion extends BaseTable {
             'CategoryID' => Category::getInstance()->getRandomId(),
             'InsertUserID' => User::getInstance()->getRandomId(),
             'Name' => \Faker\Lorem::sentence(),
-            'Body' => \Faker\Lorem::paragraph()
+            'Body' => \Faker\Lorem::paragraph(),
+            'DateInserted' => ':randomPastDate:'
         );
 
-        $this->prepareAndInsert($fields);
+        $this->rowsToInsert[] = $fields;
     }
 
     /**
