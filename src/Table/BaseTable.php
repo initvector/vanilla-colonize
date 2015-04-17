@@ -107,9 +107,17 @@ abstract class BaseTable {
 
         $this->afterGenerate();
 
-        // Calculate and output the total time for this table
-        $duration = number_format(microtime(true) - $start, 2);
-        echo "\nCompleted content generation in " . $duration . "s\n";
+        /**
+         * Calculate and output the total time and average records-per-second
+         * for this table.
+         */
+        $duration = microtime(true) - $start;
+        $durationFormatted = number_format($duration, 2);
+
+        $rps = $duration > 0 ? ($generated / $duration) : $generated;
+        $rpsFormatted = number_format($rps, 2);
+
+        echo "\nCompleted content generation in {$durationFormatted}s (avg. {$rpsFormatted}rps)\n";
     }
 
     /**
