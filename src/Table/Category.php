@@ -14,8 +14,12 @@ class Category extends BaseTable {
      * @var string
      */
     protected $insertStatement = "insert into GDN_Category
-        (ParentCategoryID, Depth, Name, UrlCode, Description)
-        values (-1, 1, ?, ?, ?)";
+        (ParentCategoryID, Depth, Name, UrlCode, Description, InsertUserID, DateInserted, DateUpdated)
+        values (
+            -1, 1, ?, ?, ?, 1,
+            (select now() - interval floor(rand() * 365) day),
+            (select now() - interval floor(rand() * 365) day)
+        )";
 
     /**
      * Type mapping of placeholders in the prepared statement.

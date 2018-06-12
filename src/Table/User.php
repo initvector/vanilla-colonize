@@ -14,8 +14,11 @@ class User extends BaseTable {
      * @var string
      */
     protected $insertStatement = "insert into GDN_User
-        (Name, Title, Password, HashMethod, Location, About, Email) values
-        (?, ?, 'vanilla', 'text', ?, ?, ?)";
+        (Name, Title, Password, HashMethod, Location, About, Email, DateInserted)
+        values (
+            ?, ?, 'vanilla', 'text', ?, ?, ?,
+            (select now() - interval floor(rand() * 365) day)
+        )";
 
     /**
      * Type mapping of placeholders in the prepared statement.

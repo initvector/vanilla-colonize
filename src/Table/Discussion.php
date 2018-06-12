@@ -34,7 +34,7 @@ class Discussion extends BaseTable {
         $fields = array(
             'CategoryID' => Category::getInstance()->getRandomId(),
             'InsertUserID' => User::getInstance()->getRandomId(),
-            'Name' => \Faker\Lorem::sentence(),
+            'Name' => substr(\Faker\Lorem::sentence(), 0, 100),
             'Body' => \Faker\Lorem::paragraph()
         );
 
